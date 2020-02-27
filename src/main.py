@@ -1,19 +1,32 @@
+#!/usr/bin/env python3
+
 import fitz
 import sys
 from PIL import Image
+import os
+import argparse
+from inversion import invert
 
-images = []
-doc = fitz.open(sys.argv[1])
-for i in range(doc.pageCount):
-    page = doc.loadPage(i)
-    zoom = 2
-    mat = fitz.Matrix(zoom, zoom)
-    img = page.getPixmap(matrix=mat)
-    img.invertIRect()
-    images.append(Image.frombytes("RGB", [img.width, img.height], img.samples))
-name = doc.metadata['title']
-doc.close()
-if len(images) > 1:
-    images[0].save('output/%s.pdf'%name, save_all=True, append_images=images[1:])
-else:
-    images[0].save('output/%s.pdf' % name)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Start training of an agent')
+    parser.add_argument('input',  help='Path to the input PDF file')
+    parser.add_argument('-o', '--output')
+    parser.add_argument('-n', '--name')
+    args = parser.parse_args()
+
+    doc = fitz.open(args.input)
+    if args.output:
+        output_path = args.output
+    else:
+        name = doc.metadata['title'] if not args.name else args.name
+        if name[-4:] != '.pdf':
+            name += '.pdf'
+        output_path = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))) + '\\output\\' + name
+    images = invert(doc)
+    doc.close()
+
+    if len(images) > 1:
+        images[0].save(output_path, format='PDF', save_all=True, append_images=images[1:])
+    else:
+        images[0].save(output_path, format='PDF')
